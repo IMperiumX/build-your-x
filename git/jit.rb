@@ -4,7 +4,10 @@ require 'pathname'
 require_relative 'workspace'
 require_relative 'database'
 require_relative 'blob'
-
+require_relative 'entry'
+require_relative 'tree'
+require_relative 'author'
+require_relative 'commit'
 def usage
   puts 'usage: jit <command> [<args>]'
   puts
@@ -34,11 +37,26 @@ when 'commit'
   db_path = git_path.join('objects')
   workspace = Workspace.new(root_path)
   database = Database.new(db_path)
-  workspace.list_files.each do |path|
+  entries = workspace.list_files.map do |path|
     data = workspace.read_file(path)
     blob = Blob.new(data)
     database.store(blob)
+    Entry.new(path, blob.oid)
   end
+  tree = Tree.new(entries)
+  database.store(tree)
+  puts "tree: #{tree.oid}"
+  name = ENV.fetch('GIT_AUTHOR_NAME', 'Yousef')
+  email = ENV.fetch('GIT_AUTHOR_EMAIL', 'yusufadell.dev@gmail.com')
+  author = Author.new(name, email, Time.now)
+  message = $stdin.read
+  commit = Commit.new(tree.oid, author, message)
+  database.store(commit)
+  File.open(git_path.join('HEAD'), File::WRONLY | File::CREAT) do |file|
+    file.puts(commit.oid)
+  end
+  puts "[(root-commit) #{commit.oid}] #{message.lines.first}"
+  exit 0
 when 'help'
   subcommand = ARGV.shift
   case subcommand
