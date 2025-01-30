@@ -126,7 +126,6 @@ class HTTPRequestHandler(StreamRequestHandler):
         print("Error")
 
     def parse_request(self):
-        print("Parse request")
         self.command = "GET"
         requestline = str(self.raw_requestline, "iso-8859-1")
         requestline = requestline.rstrip("\r\n")
